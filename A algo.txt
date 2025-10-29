@@ -1,0 +1,132 @@
+# A* algorithm to solve the 8-puzzle (3x3)
+# Heuristic: Manhattan distance
+# Author: ChatGPT (example)
+from heapq import heappush, heappop
+
+GOAL = (1,2,3,4,5,6,7,8,0)   # goal state as tuple
+
+# Precompute goal positions for Manhattan
+goal_pos = { val: (i//3, i%3) for i, val in enumerate(GOAL) }
+
+def manhattan(state):
+    """Sum of Manhattan distances of tiles from goal (0 ignored)."""
+    dist = 0
+    for i, val in enumerate(state):
+        if val == 0:
+            continue
+        r,c = divmod(i, 3)
+        gr, gc = goal_pos[val]
+        dist += abs(r-gr) + abs(c-gc)
+    return dist
+
+def is_solvable(state):
+    """Check solvability by counting inversions (for 8-puzzle)."""
+    arr = [x for x in state if x != 0]
+    inv = 0
+    for i in range(len(arr)):
+        for j in range(i+1, len(arr)):
+            if arr[i] > arr[j]:
+                inv += 1
+    # For 3x3 (odd width), solvable iff inversions is even
+    return inv % 2 == 0
+
+def neighbors(state):
+    """Generate neighbor states by sliding the blank (0)."""
+    idx = state.index(0)
+    r, c = divmod(idx, 3)
+    moves = []
+    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:  # up, down, left, right
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < 3 and 0 <= nc < 3:
+            nidx = nr*3 + nc
+            new_state = list(state)
+            new_state[idx], new_state[nidx] = new_state[nidx], new_state[idx]
+            moves.append(tuple(new_state))
+    return moves
+
+def reconstruct_path(came_from, current):
+    path = [current]
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    path.reverse()
+    return path
+
+def a_star(start):
+    if start == GOAL:
+        return [start], 0, 0  # path, g, expanded_nodes
+
+    if not is_solvable(start):
+        return None, None, None
+
+    open_heap = []
+    g_score = {start: 0}
+    h = manhattan(start)
+    f_score = {start: h}
+    # heap entries: (f, h, g, state) -- include h,g to stabilize tie-break
+    heappush(open_heap, (f_score[start], h, 0, start))
+    came_from = {}
+    closed = set()
+    expanded = 0
+
+    while open_heap:
+        f, hval, g, current = heappop(open_heap)
+        if current in closed:
+            continue
+
+        expanded += 1
+        if current == GOAL:
+            path = reconstruct_path(came_from, current)
+            return path, g_score[current], expanded
+
+        closed.add(current)
+
+        for neigh in neighbors(current):
+            if neigh in closed:
+                continue
+            tentative_g = g_score[current] + 1
+            if tentative_g < g_score.get(neigh, float('inf')):
+                came_from[neigh] = current
+                g_score[neigh] = tentative_g
+                h_neigh = manhattan(neigh)
+                f_neigh = tentative_g + h_neigh
+                f_score[neigh] = f_neigh
+                heappush(open_heap, (f_neigh, h_neigh, tentative_g, neigh))
+
+    return None, None, expanded
+
+def pretty_print(state):
+    s = list(state)
+    return f"{s[0]} {s[1]} {s[2]}\n{s[3]} {s[4]} {s[5]}\n{s[6]} {s[7]} {s[8]}"
+
+def print_solution(path):
+    print("Solution steps (index starts at 0):")
+    for i, st in enumerate(path):
+        g = i
+        h = manhattan(st)
+        f = g + h
+        print(f"\nStep {i}: (g={g}, h={h}, f={f})")
+        print(pretty_print(st))
+
+# -------------------------
+# Example usage:
+# -------------------------
+if __name__ == "__main__":
+    # Example start: change this to any state (tuple of 9 numbers 0..8)
+    # Example 1 (easy): blank near bottom-left
+    start = (1,2,3,4,5,6,0,7,8)
+
+    print("Start state:")
+    print(pretty_print(start))
+    print("\nGoal state:")
+    print(pretty_print(GOAL))
+
+    if not is_solvable(start):
+        print("\nThis start state is NOT solvable.")
+    else:
+        path, moves, expanded = a_star(start)
+        if path is None:
+            print("\nNo solution found.")
+        else:
+            print(f"\nSolved! moves (g) = {moves}, nodes expanded = {expanded}")
+            print_solution(path)
