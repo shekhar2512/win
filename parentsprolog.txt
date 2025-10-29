@@ -1,0 +1,37 @@
+% Facts
+male(john).
+male(peter).
+male(david).
+female(lisa).
+female(mary).
+female(susan).
+
+parent(john, peter).
+parent(lisa, peter).
+parent(john, mary).
+parent(lisa, mary).
+parent(peter, susan).
+parent(david, susan).
+
+% Rules
+father(X, Y) :- parent(X, Y), male(X).
+mother(X, Y) :- parent(X, Y), female(X).
+
+grandfather(X, Y) :-
+    father(X, Z),
+    parent(Z, Y).
+
+grandmother(X, Y) :-
+    mother(X, Z),
+    parent(Z, Y).
+
+sibling(X, Y) :-
+    parent(Z, X),
+    parent(Z, Y),
+    X \= Y.
+
+
+
+
+queries
+father(john, peter).
